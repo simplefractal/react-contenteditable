@@ -3,8 +3,9 @@ import deepEqual from 'fast-deep-equal';
 import * as PropTypes from 'prop-types';
 
 
-function normalizeHtml(str: string): string {
-  return str && str.replace(/&nbsp;|\u202F|\u00A0/g, ' ');
+function normalizeHtml(str: string, options: Array<string>): string {
+  return str && options.reduce((acc, option) =>
+    acc.replace(option, ''), str.replace(/&nbsp;|\u202F|\u00A0/g, ' '));
 }
 
 function findLastTextNode(node: Node) : Node | null {
@@ -76,7 +77,8 @@ export default class ContentEditable extends React.Component<Props> {
 
     // ...or if html really changed... (programmatically, not by user edit)
     if (
-      normalizeHtml(nextProps.html) !== normalizeHtml(htmlEl.innerHTML)
+      normalizeHtml(nextProps.html, props.normalizeHtmlOptions || []) !==
+      normalizeHtml(htmlEl.innerHTML, props.normalizeHtmlOptions || [])
     ) {
       return true;
     }
@@ -122,7 +124,8 @@ export default class ContentEditable extends React.Component<Props> {
     disabled: PropTypes.bool,
     tagName: PropTypes.string,
     className: PropTypes.string,
-    style: PropTypes.object
+    style: PropTypes.object,
+    normalizeHtmlOptions: PropTypes.array
   }
 }
 
@@ -133,5 +136,6 @@ export interface Props {
   disabled?: boolean,
   tagName?: string,
   className?: string,
-  style?: Object
+  style?: Object,
+  normalizeHtmlOptions?: Array<string>
 }
