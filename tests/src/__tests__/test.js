@@ -53,6 +53,16 @@ async function resetStyle(page, editComponent) {
   await expectHtml(editComponent, "ab");
 }
 
+async function onChangeRef(page, editComponent) {
+
+  // set ref to function
+  await editComponent("setProps({ innerRef: () => {} })");
+
+  // type "a"
+  await page.type("#editableDiv", "a");
+  await expectHtml(editComponent, "a");
+}
+
 async function initialOnChange(page, editComponent) {
   // See: https://github.com/lovasoa/react-contenteditable/issues/42
 
@@ -72,32 +82,44 @@ async function initialOnChange(page, editComponent) {
   await expect(editComponent('history.length')).resolves.toBe(0);
 }
 
+async function createRef(page, editComponent) {
+  // We should know the element now
+  await expect(editComponent('el.current')).resolves.not.toBe(null);
+
+}
+
 const testFuns = [
   initialState,
   textTyped,
   deleteRewrite,
   resetStyle,
-  initialOnChange
+  initialOnChange,
+  onChangeRef,
 ];
 
-describe("react-contenteditable", async () => {
-  let browser, page;
+for (let useInnerRef of [false, true]) {
+  let namePart = (useInnerRef ? "with" : "without");
+  describe(`react-contenteditable ${namePart} external ref`, () => {
+    let browser, page;
 
-  beforeAll(async () => {
-    browser = await puppeteer.launch();
-    page = await browser.newPage();
-  });
-
-  afterAll(async () => {
-    browser.close();
-  });
-
-  for (let testFun of testFuns) {
-    test(testFun.name, async () => {
-      await page.goto(testFile);
-      await page.waitForSelector('#editableDiv');
-      const editComponent = f => page.evaluate('editComponent.' + f);
-      await testFun(page, editComponent);
+    beforeAll(async () => {
+      browser = await puppeteer.launch();
+      page = await browser.newPage();
     });
-  }
-}, 16000);
+
+    afterAll(async () => {
+      browser.close();
+    });
+
+    let funs = useInnerRef ? [...testFuns, createRef] : testFuns;
+    for (let testFun of funs) {
+      test(testFun.name, async () => {
+        await page.goto(testFile);
+        await page.evaluate(`render(${useInnerRef})`);
+        await page.waitForSelector('#editableDiv');
+        const editComponent = f => page.evaluate('editComponent.' + f);
+        await testFun(page, editComponent);
+      });
+    }
+  }, 16000);
+}
